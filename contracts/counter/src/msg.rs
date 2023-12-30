@@ -1,61 +1,223 @@
 
-use cosmwasm_schema::{cw_serde, QueryResponses};
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin};
+use cw2::set_contract_version;
 
-#[cw_serde]
-pub struct InstantiateMsg {}
+use crate::error::ContractError;
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, GetPoolResponse};
+use crate::state::{State, Bet, STATE};
 
-#[cw_serde]
-pub enum ExecuteMsg {
-    PlaceBet { bet: String, amount: u128 },  // Bet can be "head" or "tail"
-    Resolve {},
+const CONTRACT_NAME: &str = "crates.io:flipcoin";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn instantiate(
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _msg: InstantiateMsg,
+) -> Result<Response, ContractError> {
+    let state = State {
+        head_bets: vec![],
+        tail_bets: vec![],
+    };
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    STATE.save(deps.storage, &state)?;
+
+    Ok(Response::new().add_attribute("method", "instantiate"))
 }
 
-#[cw_serde]
-#[derive(QueryResponses)]
-pub enum QueryMsg {
-    // Query to get the current pool size for heads and tails
-    GetPool {},
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn execute(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::PlaceBet { bet, amount } => {
+            // Implement bet placing logic here
+        },
+        ExecuteMsg::Resolve => {
+            // Implement game resolution logic here
+        }
+    }
 }
 
-#[cw_serde]
-pub struct GetPoolResponse {
-    pub head_pool: u128,
-    pub tail_pool: u128,
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(
+    deps: Deps,
+    _env: Env,
+    msg: QueryMsg,
+) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::GetPool {} => to_binary(&query_pool(deps)?),
+    }
 }
 
-
-
-
-
-/*
-
-use cosmwasm_schema::{cw_serde, QueryResponses};
-
-#[cw_serde]
-pub struct InstantiateMsg {
-    pub count: i32,
+fn query_pool(deps: Deps) -> StdResult<GetPoolResponse> {
+    let state = STATE.load(deps.storage)?;
+    let head_pool: u128 = state.head_bets.iter().map(|bet| bet.amount).sum();
+    let tail_pool: u128 = state.tail_bets.iter().map(|bet| bet.amount).sum();
+    Ok(GetPoolResponse { head_pool, tail_pool })
 }
 
-#[cw_serde]
-pub enum ExecuteMsg {
-    Increment {},
-    Reset { count: i32 },
+// Implement additional helper functions as needed
 
+/*#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cw2::set_contract_version;
+
+use crate::error::ContractError;
+use crate::msg::{ExecuteMsg, GetCountResponse, InstantiateMsg, QueryMsg};
+use crate::state::{State, STATE};
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:counter";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn instantiate(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: InstantiateMsg,
+) -> Result<Response, ContractError> {
+    let state = State {
+        count: msg.count,
+        owner: info.sender.clone(),
+    };
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    STATE.save(deps.storage, &state)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "instantiate")
+        .add_attribute("owner", info.sender)
+        .add_attribute("count", msg.count.to_string()))
 }
 
-#[cw_serde]
-#[derive(QueryResponses)]
-pub enum QueryMsg {
-    // GetCount returns the current count as a json-encoded number
-    #[returns(GetCountResponse)]
-    GetCount {},
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn execute(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::Increment {} => execute::increment(deps),
+        ExecuteMsg::Reset { count } => execute::reset(deps, info, count),
+    }
 }
 
-// We define a custom struct for each query response
-#[cw_serde]
-pub struct GetCountResponse {
-    pub count: i32,
+pub mod execute {
+    use super::*;
+
+    pub fn increment(deps: DepsMut) -> Result<Response, ContractError> {
+        STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+            state.count += 1;
+            Ok(state)
+        })?;
+
+        Ok(Response::new().add_attribute("action", "increment"))
+    }
+
+    pub fn reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Response, ContractError> {
+        STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+            if info.sender != state.owner {
+                return Err(ContractError::Unauthorized {});
+            }
+            state.count = count;
+            Ok(state)
+        })?;
+        Ok(Response::new().add_attribute("action", "reset"))
+    }
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::GetCount {} => to_binary(&query::count(deps)?),
+    }
+}
 
-*/
+pub mod query {
+    use super::*;
+
+    pub fn count(deps: Deps) -> StdResult<GetCountResponse> {
+        let state = STATE.load(deps.storage)?;
+        Ok(GetCountResponse { count: state.count })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{coins, from_binary};
+
+    #[test]
+    fn proper_initialization() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg { count: 17 };
+        let info = mock_info("creator", &coins(1000, "earth"));
+
+        // we can just call .unwrap() to assert this was a success
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        // it worked, let's query the state
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
+        let value: GetCountResponse = from_binary(&res).unwrap();
+        assert_eq!(17, value.count);
+    }
+
+    #[test]
+    fn increment() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg { count: 17 };
+        let info = mock_info("creator", &coins(2, "token"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        // beneficiary can release it
+        let info = mock_info("anyone", &coins(2, "token"));
+        let msg = ExecuteMsg::Increment {};
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        // should increase counter by 1
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
+        let value: GetCountResponse = from_binary(&res).unwrap();
+        assert_eq!(18, value.count);
+    }
+
+    #[test]
+    fn reset() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg { count: 17 };
+        let info = mock_info("creator", &coins(2, "token"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        // beneficiary can release it
+        let unauth_info = mock_info("anyone", &coins(2, "token"));
+        let msg = ExecuteMsg::Reset { count: 5 };
+        let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
+        match res {
+            Err(ContractError::Unauthorized {}) => {}
+            _ => panic!("Must return unauthorized error"),
+        }
+
+        // only the original creator can reset the counter
+        let auth_info = mock_info("creator", &coins(2, "token"));
+        let msg = ExecuteMsg::Reset { count: 5 };
+        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+
+        // should now be 5
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
+        let value: GetCountResponse = from_binary(&res).unwrap();
+        assert_eq!(5, value.count);
+    }
+}*/
