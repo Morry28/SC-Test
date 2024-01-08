@@ -22,6 +22,8 @@ pub fn instantiate(
     let state = State {
         head_bets: vec![],
         tail_bets: vec![],
+        admin: msg.admin,
+
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &state)?;
