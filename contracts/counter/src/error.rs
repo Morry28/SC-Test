@@ -16,6 +16,9 @@ pub enum ContractError {
     #[error("Invalid bet amount")]
     InvalidBetAmount {},
 
+    #[error("Invalid funds: only $OSMO accepted")]
+    InvalidFunds {},
+    
     // You can add other custom errors as needed
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },
