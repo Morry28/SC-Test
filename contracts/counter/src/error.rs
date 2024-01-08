@@ -9,18 +9,14 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Custom Error val: {val:?}")]
-    CustomError { val: String },
-    // Add any other custom errors you like here.
-    // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
-}
-#[derive(Error, Debug)]
-pub enum ContractError {
-    // ... existing errors ...
-
+    // Include your custom errors here
     #[error("Invalid bet")]
     InvalidBet {},
 
     #[error("Invalid bet amount")]
     InvalidBetAmount {},
+
+    // You can add other custom errors as needed
+    #[error("Custom Error val: {val:?}")]
+    CustomError { val: String },
 }
