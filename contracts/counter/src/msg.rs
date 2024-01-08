@@ -1,20 +1,8 @@
-
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin};
-use cw2::set_contract_version;
-
-use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, GetPoolResponse};
-use crate::state::{State, Bet, STATE};
-
-const CONTRACT_NAME: &str = "crates.io:flipcoin";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
+use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // Add any fields needed for initialization, if necessary
+    // No fields needed for this contract's initialization
 }
 
 #[cw_serde]
