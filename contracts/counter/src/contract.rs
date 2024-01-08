@@ -80,12 +80,6 @@ fn try_place_bet(deps: DepsMut, info: MessageInfo, bet: String, amount: u128) ->
 
 fn try_resolve_game(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
-
-    // Check if sender is the admin for manual resolution
-    if info.sender != state.admin {
-        return Err(ContractError::Unauthorized {});
-    }
-
     let winner = if rand::random() { BetSide::Heads } else { BetSide::Tails };
 
     // Calculate total bets for each side
