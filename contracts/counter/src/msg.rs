@@ -2,7 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // No fields needed for this contract's initialization
+    pub admin: Addr,
 }
 
 #[cw_serde]
