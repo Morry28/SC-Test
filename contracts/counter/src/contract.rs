@@ -53,17 +53,28 @@ fn try_place_bet(deps: DepsMut, info: MessageInfo, bet: String, amount: u128) ->
         return Err(ContractError::InvalidBetAmount {});
     }
 
-    // Load and update state
-    let mut state = STATE.load(deps.storage)?;
-    let bet = Bet { bettor: info.sender, amount: Uint128::new(amount), side };
-    match side {
-        BetSide::Heads => state.head_bets.push(bet),
-        BetSide::Tails => state.tail_bets.push(bet),
-    }
-    STATE.save(deps.storage, &state)?;
+    // Check if the sent funds are in $OSMO and match the bet amount
+    let sent_funds = info.funds.iter().find(|coin| coin.denom == "uosmo");
+    match sent_funds {
+        Some(coin) if coin.amount.u128() == amount => {
+            // Correct denomination and amount, proceed with placing the bet
+            let mut state = STATE.load(deps.storage)?;
+            let bet = Bet { bettor: info.sender, amount: Uint128::new(amount), side };
+            match side {
+                BetSide::Heads => state.head_bets.push(bet),
+                BetSide::Tails => state.tail_bets.push(bet),
+            }
+            STATE.save(deps.storage, &state)?;
 
-    Ok(Response::new().add_attribute("action", "place_bet"))
+            Ok(Response::new().add_attribute("action", "place_bet"))
+        },
+        _ => {
+            // Either the denomination is not $OSMO or the amount doesn't match
+            Err(ContractError::InvalidFunds {})
+        }
+    }
 }
+
 
 fn try_resolve_game(deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
