@@ -1,18 +1,12 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 use cosmwasm_std::{
     to_binary, Addr, CosmosMsg, CustomQuery, Querier, QuerierWrapper, StdResult, WasmMsg, WasmQuery,
 };
+use crate::msg::{ExecuteMsg, QueryMsg, GetPoolResponse};
 
-use crate::msg::{ExecuteMsg, GetCountResponse, QueryMsg};
-
-/// CwTemplateContract is a wrapper around Addr that provides a lot of helpers
-/// for working with this.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct CwTemplateContract(pub Addr);
+pub struct FlipCoinContract(pub Addr);
 
-impl CwTemplateContract {
+impl FlipCoinContract {
     pub fn addr(&self) -> Addr {
         self.0.clone()
     }
@@ -27,20 +21,19 @@ impl CwTemplateContract {
         .into())
     }
 
-    /// Get Count
-    pub fn count<Q, T, CQ>(&self, querier: &Q) -> StdResult<GetCountResponse>
+    // Function to query the current pool sizes
+    pub fn get_pool<Q, CQ>(&self, querier: &Q) -> StdResult<GetPoolResponse>
     where
         Q: Querier,
-        T: Into<String>,
         CQ: CustomQuery,
     {
-        let msg = QueryMsg::GetCount {};
+        let msg = QueryMsg::GetPool {};
         let query = WasmQuery::Smart {
             contract_addr: self.addr().into(),
             msg: to_binary(&msg)?,
         }
         .into();
-        let res: GetCountResponse = QuerierWrapper::<CQ>::new(querier).query(&query)?;
+        let res: GetPoolResponse = QuerierWrapper::<CQ>::new(querier).query(&query)?;
         Ok(res)
     }
 }
