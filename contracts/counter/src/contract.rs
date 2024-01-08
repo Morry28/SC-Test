@@ -11,6 +11,8 @@ use crate::state::{Bet, BetSide};
 
 const CONTRACT_NAME: &str = "crates.io:flipcoin";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+const ADMIN_WALLET: &str = "osmo1efcn8ae5k5jlxxza7r7yr2m4elmux454kd7q3g";
+const ADMIN_FEE_PERCENTAGE: u128 = 2; // 2% creator fee from loosing side
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -76,24 +78,34 @@ fn try_place_bet(deps: DepsMut, info: MessageInfo, bet: String, amount: u128) ->
 }
 
 
-fn try_resolve_game(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+fn try_resolve_game(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
+
     let winner = if rand::random() { BetSide::Heads } else { BetSide::Tails };
 
-    // Calculate total bets for each side
     let total_heads: u128 = state.head_bets.iter().map(|bet| bet.amount.u128()).sum();
     let total_tails: u128 = state.tail_bets.iter().map(|bet| bet.amount.u128()).sum();
 
-    // Determine the winning and losing pools
     let (winning_bets, losing_total) = match winner {
         BetSide::Heads => (&state.head_bets, total_tails),
         BetSide::Tails => (&state.tail_bets, total_heads),
     };
 
-    // Calculate and distribute winnings proportionally
+    // Calculate the admin fee
+    let admin_fee = losing_total * ADMIN_FEE_PERCENTAGE / 100;
+    let winnings_pool = losing_total - admin_fee;
+
     let mut messages: Vec<BankMsg> = Vec::new();
+
+    // Send admin fee to the admin wallet
+    messages.push(BankMsg::Send {
+        to_address: ADMIN_WALLET.to_string(),
+        amount: vec![Coin { denom: "uosmo".to_string(), amount: Uint128::from(admin_fee) }],
+    });
+
+    // Distribute the remaining winnings proportionally
     for bet in winning_bets {
-        let winnings = bet.amount.u128() * losing_total / (total_heads + total_tails);
+        let winnings = bet.amount.u128() * winnings_pool / (total_heads + total_tails);
         messages.push(BankMsg::Send {
             to_address: bet.bettor.to_string(),
             amount: vec![Coin { denom: "uosmo".to_string(), amount: Uint128::from(winnings) }],
@@ -105,6 +117,7 @@ fn try_resolve_game(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
 
     Ok(Response::new().add_messages(messages).add_attribute("action", "resolve_game"))
 }
+
 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
