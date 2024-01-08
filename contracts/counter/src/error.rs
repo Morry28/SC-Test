@@ -14,3 +14,13 @@ pub enum ContractError {
     // Add any other custom errors you like here.
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
 }
+#[derive(Error, Debug)]
+pub enum ContractError {
+    // ... existing errors ...
+
+    #[error("Invalid bet")]
+    InvalidBet {},
+
+    #[error("Invalid bet amount")]
+    InvalidBetAmount {},
+}
