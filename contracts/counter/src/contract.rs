@@ -78,30 +78,42 @@ fn try_place_bet(deps: DepsMut, info: MessageInfo, bet: String, amount: u128) ->
 }
 
 
-fn try_resolve_game(deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
+fn try_resolve_game(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
+
+    // Check if sender is the admin for manual resolution
+    if info.sender != state.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let winner = if rand::random() { BetSide::Heads } else { BetSide::Tails };
 
-    // Calculate winnings and prepare messages
+    // Calculate total bets for each side
+    let total_heads: u128 = state.head_bets.iter().map(|bet| bet.amount.u128()).sum();
+    let total_tails: u128 = state.tail_bets.iter().map(|bet| bet.amount.u128()).sum();
+
+    // Determine the winning and losing pools
     let (winning_bets, losing_total) = match winner {
-        BetSide::Heads => (state.head_bets, state.tail_bets.iter().map(|bet| bet.amount.u128()).sum()),
-        BetSide::Tails => (state.tail_bets, state.head_bets.iter().map(|bet| bet.amount.u128()).sum()),
+        BetSide::Heads => (&state.head_bets, total_tails),
+        BetSide::Tails => (&state.tail_bets, total_heads),
     };
 
-    let mut messages = vec![];
+    // Calculate and distribute winnings proportionally
+    let mut messages: Vec<BankMsg> = Vec::new();
     for bet in winning_bets {
-        let winnings = bet.amount.u128() * 2; // Double the bet amount
+        let winnings = bet.amount.u128() * losing_total / (total_heads + total_tails);
         messages.push(BankMsg::Send {
             to_address: bet.bettor.to_string(),
             amount: vec![Coin { denom: "uosmo".to_string(), amount: Uint128::from(winnings) }],
         });
     }
 
-    // Reset state for the next game
+    // Clear the bets for the next round
     STATE.save(deps.storage, &State::default())?;
 
     Ok(Response::new().add_messages(messages).add_attribute("action", "resolve_game"))
 }
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(
