@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use crate::helpers::CwTemplateContract;
-    use crate::msg::InstantiateMsg;
+    use crate::helpers::FlipCoinContract;
+    use crate::msg::{InstantiateMsg, ExecuteMsg, BetSide};
     use cosmwasm_std::{Addr, Coin, Empty, Uint128};
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 
-    pub fn contract_template() -> Box<dyn Contract<Empty>> {
+    pub fn contract_flip_coin() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
             crate::contract::execute,
             crate::contract::instantiate,
@@ -27,45 +27,52 @@ mod tests {
                     &Addr::unchecked(USER),
                     vec![Coin {
                         denom: NATIVE_DENOM.to_string(),
-                        amount: Uint128::new(1),
+                        amount: Uint128::new(1000),
                     }],
                 )
                 .unwrap();
         })
     }
 
-    fn proper_instantiate() -> (App, CwTemplateContract) {
+    fn proper_instantiate() -> (App, FlipCoinContract) {
         let mut app = mock_app();
-        let cw_template_id = app.store_code(contract_template());
+        let flip_coin_id = app.store_code(contract_flip_coin());
 
-        let msg = InstantiateMsg { count: 1i32 };
-        let cw_template_contract_addr = app
+        let msg = InstantiateMsg {};
+        let flip_coin_contract_addr = app
             .instantiate_contract(
-                cw_template_id,
+                flip_coin_id,
                 Addr::unchecked(ADMIN),
                 &msg,
                 &[],
-                "test",
+                "Flip Coin",
                 None,
             )
             .unwrap();
 
-        let cw_template_contract = CwTemplateContract(cw_template_contract_addr);
+        let flip_coin_contract = FlipCoinContract(flip_coin_contract_addr);
 
-        (app, cw_template_contract)
+        (app, flip_coin_contract)
     }
 
-    mod count {
+    mod flip_coin_tests {
         use super::*;
-        use crate::msg::ExecuteMsg;
-
+        
         #[test]
-        fn count() {
-            let (mut app, cw_template_contract) = proper_instantiate();
+        fn place_bet_and_resolve() {
+            let (mut app, flip_coin_contract) = proper_instantiate();
 
-            let msg = ExecuteMsg::Increment {};
-            let cosmos_msg = cw_template_contract.call(msg).unwrap();
+            // User places a bet on heads
+            let bet_msg = ExecuteMsg::PlaceBet { side: BetSide::Heads, amount: 100 };
+            let cosmos_msg = flip_coin_contract.call(bet_msg).unwrap();
             app.execute(Addr::unchecked(USER), cosmos_msg).unwrap();
+
+            // Resolve the game
+            let resolve_msg = ExecuteMsg::Resolve {};
+            let cosmos_msg = flip_coin_contract.call(resolve_msg).unwrap();
+            app.execute(Addr::unchecked(ADMIN), cosmos_msg).unwrap();
+
+            // Additional assertions can be added here to check the state after the game is resolved
         }
     }
 }
