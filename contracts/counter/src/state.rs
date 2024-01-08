@@ -20,8 +20,6 @@ pub struct Bet {
 pub struct State {
     pub head_bets: Vec<Bet>,
     pub tail_bets: Vec<Bet>,
-    pub admin: Addr,
-
 }
 
 pub const STATE: Item<State> = Item::new("state");
