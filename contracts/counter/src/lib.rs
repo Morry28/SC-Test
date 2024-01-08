@@ -1,7 +1,6 @@
 pub mod contract;
 mod error;
-pub mod helpers;
-pub mod integration_tests;
+mod helpers; // If helpers are for internal use only
 pub mod msg;
 pub mod state;
 
